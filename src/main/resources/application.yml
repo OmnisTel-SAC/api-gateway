@@ -1,0 +1,68 @@
+server:
+  port: 8050
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://config-server:8888}
+
+  codec:
+    max-in-memory-size: 10MB
+  redis:
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          public-key-location: ${JWT_PUBLIC_KEY_LOCATION:file:/app/keys/public.pem}
+
+  cloud:
+    gateway:
+      routes:
+        # ─── Swagger API Docs (rewrite to service default path) ───
+        - id: auth-service-api-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/v3/api-docs
+          filters:
+            - RewritePath=/api/auth/v3/api-docs, /v3/api-docs
+        - id: ticket-service-api-docs
+          uri: lb://ticket-service
+          predicates:
+            - Path=/api/tickets/v3/api-docs
+          filters:
+            - RewritePath=/api/tickets/v3/api-docs, /v3/api-docs
+        - id: notification-service-api-docs
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/v3/api-docs
+          filters:
+            - RewritePath=/api/notifications/v3/api-docs, /v3/api-docs
+        # ─── Business routes ───
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+        - id: ticket-service
+          uri: lb://ticket-service
+          predicates:
+            - Path=/api/tickets/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "http://localhost:4200"
+            allowed-methods: "*"
+            allowed-headers: "*"
+            allow-credentials: true
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URL:http://eureka-server:8761/eureka/}
